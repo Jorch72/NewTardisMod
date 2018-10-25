@@ -1,6 +1,7 @@
 package net.tardis.mod.common.entities;
 
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -10,6 +11,9 @@ import net.minecraft.entity.passive.EntityFlying;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.InventoryHelper;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.MathHelper;
@@ -19,8 +23,11 @@ import net.tardis.mod.api.entities.IDontSufficate;
 import net.tardis.mod.common.TDamageSources;
 import net.tardis.mod.common.items.TItems;
 import net.tardis.mod.common.sounds.TSounds;
+import net.tardis.mod.me.fril.tests.MovingSoundDalek;
 
 public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFlying, IDontSufficate {
+
+	private static final DataParameter<Boolean> SHIELDING = EntityDataManager.createKey(EntityDalek.class, DataSerializers.BOOLEAN);
 
 	private ItemStack[] deathItems = new ItemStack[]{new ItemStack(TItems.power_cell, 20 + rand.nextInt(11)), new ItemStack(TItems.gunstick, 1), new ItemStack(TItems.circuts, 7 + rand.nextInt(3))};
 
@@ -35,15 +42,18 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
         tasks.addTask(5, new EntityAIMoveTowardsRestriction(this, 1.0D));
         tasks.addTask(7, new EntityAIWanderAvoidWater(this, 1.0D));
         tasks.addTask(8, new EntityAIWatchClosest(this, EntityPlayer.class, 8.0F));
-        applyEntityAI();
-    }
 
-    protected void applyEntityAI() {
-        tasks.addTask(6, new EntityAIMoveThroughVillage(this, 1.0D, false));
-        targetTasks.addTask(1, new EntityAIHurtByTarget(this, true));
-        targetTasks.addTask(2, new EntityAINearestAttackableTarget<>(this, EntityPlayer.class, true));
-        targetTasks.addTask(0, new EntityAINearestAttackableTarget<>(this, EntityLivingBase.class, 100, true, false, input -> !(input instanceof EntityDalek)));
-    }
+		tasks.addTask(6, new EntityAIMoveThroughVillage(this, 1.0D, false));
+		targetTasks.addTask(1, new EntityAIHurtByTarget(this, true));
+		targetTasks.addTask(2, new EntityAINearestAttackableTarget<>(this, EntityPlayer.class, true));
+		targetTasks.addTask(0, new EntityAINearestAttackableTarget<>(this, EntityLivingBase.class, 100, true, false, input -> !(input instanceof EntityDalek)));
+	}
+
+	@Override
+	protected void entityInit() {
+		super.entityInit();
+		getDataManager().register(SHIELDING, false);
+	}
 
 	@Override
 	protected void applyEntityAttributes() {
@@ -62,9 +72,10 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
 		double y = target.getEntityBoundingBox().minY + (double) (target.height / 3.0F) - laser.posY;
 		double z = target.posZ - this.posZ;
 		double d3 = (double) MathHelper.sqrt(x * x + z * z);
-		laser.shoot(x, y + d3 * 0.20000000298023224D, z, 1.6F, (float) (14 - this.world.getDifficulty().getId() * 4));
+		laser.shoot(x, y + d3 * 0.2D, z, 1.6F, (float) (14 - this.world.getDifficulty().getId() * 4));
 		this.world.spawnEntity(laser);
 		world.playSound(null, this.getPosition(), TSounds.dalek, SoundCategory.HOSTILE, 1F, 1F);
+		world.playSound(null, getPosition(), TSounds.dalek_ray, SoundCategory.HOSTILE, 1F, 1F);
 	}
 	
 	@Override
@@ -73,11 +84,19 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
 	@Override
 	protected void jump() {
 		setNoGravity(true);
+		motionY = motionY + 1;
 	}
 
 	@Override
 	public void onUpdate() {
 		super.onUpdate();
+
+		if (ticksExisted == 5) {
+			if (world.isRemote) {
+				Minecraft.getMinecraft().getSoundHandler().playSound(new MovingSoundDalek(MovingSoundDalek.DalekSounds.MOVING, this));
+			}
+		}
+
 		if(this.getAttackTarget() != null) {
 			if (this.getAttackTarget().posY >= this.posY + 1 || this.isInWater() || isAirBorne) {
 				this.setNoGravity(true);
@@ -110,5 +129,13 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
 	@Override
 	public float getEyeHeight() {
 		return 1F;
+	}
+
+	public boolean isShielding() {
+		return getDataManager().get(SHIELDING);
+	}
+
+	public void setShielding(Boolean shielding) {
+		getDataManager().set(SHIELDING, shielding);
 	}
 }

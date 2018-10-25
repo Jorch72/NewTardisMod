@@ -2,6 +2,8 @@ package net.tardis.mod.common.items;
 
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.EnumAction;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -22,16 +24,45 @@ public class ItemRayGun extends ItemBase {
 	public ItemRayGun() {
 		this.setMaxStackSize(1);
 	}
-	
+
+	@Override
+	public EnumAction getItemUseAction(ItemStack stack) {
+		return EnumAction.BOW;
+	}
+
+	/**
+	 * How long it takes to use or consume an item
+	 */
+	@Override
+	public int getMaxItemUseDuration(ItemStack stack) {
+		return 72000;
+	}
+
 	@Override
 	public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn) {
 		ItemStack gun = playerIn.getHeldItem(handIn);
 		if (!playerIn.isSneaking()) {
 			if (getAmmo(gun) > 0) {
-				EntityLaserRay ball = new EntityLaserRay(worldIn, playerIn, 2, TDamageSources.LASER, new Vec3d(0, 1, 0));
-				if (!worldIn.isRemote) worldIn.spawnEntity(ball);
-				setAmmo(gun, getAmmo(gun) - 1);
-				worldIn.playSound(null, playerIn.getPosition(), TSounds.dalek_ray, SoundCategory.HOSTILE, 1F, 1F);
+
+				EntityLaserRay ball;
+
+				if (getAmmo(gun) < 5) {
+					ball = new EntityLaserRay(worldIn, playerIn, 2, TDamageSources.LASER, new Vec3d(1, 0, 0));
+				} else {
+					ball = new EntityLaserRay(worldIn, playerIn, 1, TDamageSources.LASER, new Vec3d(0, 1, 0));
+				}
+
+				if (!worldIn.isRemote) {
+					ball.shoot(playerIn, playerIn.rotationPitch, playerIn.rotationYaw, 0.0F, 1.5F, 1.0F);
+					worldIn.spawnEntity(ball);
+					setAmmo(gun, getAmmo(gun) - 1);
+					worldIn.playSound(null, playerIn.getPosition(), TSounds.dalek_ray, SoundCategory.HOSTILE, 1F, 1F);
+
+					if (playerIn instanceof EntityPlayerMP) {
+						EntityPlayerMP entityPlayerMP = (EntityPlayerMP) playerIn;
+						entityPlayerMP.getCooldownTracker().setCooldown(this, 10);
+					}
+				}
 				return ActionResult.newResult(EnumActionResult.SUCCESS, gun);
 			}
 		} else {
