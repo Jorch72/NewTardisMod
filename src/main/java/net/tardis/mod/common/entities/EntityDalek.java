@@ -1,7 +1,6 @@
 package net.tardis.mod.common.entities;
 
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -23,7 +22,6 @@ import net.tardis.mod.api.entities.IDontSufficate;
 import net.tardis.mod.common.TDamageSources;
 import net.tardis.mod.common.items.TItems;
 import net.tardis.mod.common.sounds.TSounds;
-import net.tardis.mod.me.fril.tests.MovingSoundDalek;
 
 public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFlying, IDontSufficate {
 
@@ -83,8 +81,8 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
 
 	@Override
 	protected void jump() {
-		setNoGravity(true);
-		motionY = motionY + 1;
+		//setNoGravity(true);
+		super.jump();
 	}
 
 	@Override
@@ -93,7 +91,7 @@ public class EntityDalek extends EntityMob implements IRangedAttackMob, EntityFl
 
 		if (ticksExisted == 5) {
 			if (world.isRemote) {
-				Minecraft.getMinecraft().getSoundHandler().playSound(new MovingSoundDalek(MovingSoundDalek.DalekSounds.MOVING, this));
+				//Minecraft.getMinecraft().getSoundHandler().playSound(new MovingSoundDalek(MovingSoundDalek.DalekSounds.MOVING, this));
 			}
 		}
 
